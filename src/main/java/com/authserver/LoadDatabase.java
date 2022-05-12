@@ -21,7 +21,11 @@ class LoadDatabase {
 
         return args -> {
             Random random = new Random();
-            log.info("Preloading " + repository.save(new AppUser(random.nextLong(), "admin","admin","adminRole")));
+            log.info("Preloading " + repository.save(new AppUser(random.nextLong(), "admin","admin","admin")));
+            for (int i = 0; i < 100; i++) {
+                log.info("Preloading " + repository.save(new AppUser(random.nextLong(), "user "+i,"user","user")));
+            }
+
 
         };
     }

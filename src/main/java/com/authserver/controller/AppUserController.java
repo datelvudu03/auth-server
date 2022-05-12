@@ -1,24 +1,27 @@
 package com.authserver.controller;
 
 import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.authserver.entity.AppUser;
 import com.authserver.entity.JwtToken;
 import com.authserver.exceptionHandler.AppUserNotFoundException;
 import com.authserver.repository.AppUserRepository;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import org.springframework.web.bind.annotation.*;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-import static org.springframework.hateoas.server.core.WebHandler.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 
 @RestController
@@ -32,13 +35,33 @@ public class AppUserController {
         this.appUserRepository = appUserRepository;
         this.tokens = tokens;
     }
-
-    @GetMapping("/all")
-    List<AppUser> all(){
-        return appUserRepository.findAll();
+    @GetMapping("/getUserWithUsername/{username}")
+    ResponseEntity<EntityModel<AppUser>> getUser(@PathVariable String username){
+        return ResponseEntity.ok(
+                EntityModel.of(appUserRepository.findByUsername(username),
+                linkTo(methodOn(AppUserController.class).getUser(username)).withSelfRel()));
+    }
+    @GetMapping("/getUserWithId/{id}")
+    ResponseEntity<EntityModel<AppUser>> findOne(@PathVariable long id) {
+        return appUserRepository.findById(id) //
+                .map(appUser -> EntityModel.of(appUser, //
+                        linkTo(methodOn(AppUserController.class).findOne(appUser.getId())).withSelfRel(), //
+                        linkTo(methodOn(AppUserController.class).findAll()).withRel("appUsers"))) //
+                .map(ResponseEntity::ok) //
+                .orElse(ResponseEntity.notFound().build());
+    }
+    @GetMapping("/findAll")
+    ResponseEntity<CollectionModel<EntityModel<AppUser>>> findAll(){
+    List<EntityModel<AppUser>> appUsers = StreamSupport.stream(appUserRepository.findAll().spliterator(), false)
+            .map(appUser -> EntityModel.of(appUser, //
+                    linkTo(methodOn(AppUserController.class).findOne(appUser.getId())).withSelfRel(), //
+                    linkTo(methodOn(AppUserController.class).findAll()).withRel("appUsers"))) //
+            .collect(Collectors.toList());
+    return ResponseEntity.ok(CollectionModel.of(appUsers,
+            linkTo(methodOn(AppUserController.class).findAll()).withSelfRel()));
     }
 
-    @GetMapping("/tokens")
+   /* @GetMapping("/tokens")
     List<JwtToken> allTokens(){
         List<JwtToken> tempTokens = new ArrayList<>();
         for (JwtToken i: tokens) {
@@ -55,7 +78,7 @@ public class AppUserController {
             }
 
         }
-    }
+    }*/
 
     @GetMapping("/userGet/{username}/{password}")
     List<AppUser> getUser(@PathVariable String username,@PathVariable String password){
