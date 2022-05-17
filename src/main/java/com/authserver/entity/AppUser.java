@@ -1,27 +1,26 @@
 package com.authserver.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import org.springframework.hateoas.RepresentationModel;
 
 import javax.persistence.*;
-import java.util.Objects;
 
 @Entity
-@Table(name = "appuser")
+@Table(name = "appUsers")
 public class AppUser extends RepresentationModel<AppUser> {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.AUTO) @Column(name = "id")
     private Long id;
     private String username;
     private String password;
     private String role;
 
+    @OneToOne(mappedBy = "appUser",cascade = CascadeType.ALL,fetch = FetchType.LAZY) @PrimaryKeyJoinColumn @JsonBackReference
+    private Contact contact;
+
     public AppUser() {
     }
 
-    public AppUser(Long id, String username, String password, String role) {
-        this.id = id;
+    public AppUser(String username, String password, String role) {
         this.username = username;
         this.password = password;
         this.role = role;
@@ -59,5 +58,10 @@ public class AppUser extends RepresentationModel<AppUser> {
         this.password = password;
     }
 
-
+    public Contact getContact() {
+        return contact;
+    }
+    public void setContact(Contact contact) {
+        this.contact = contact;
+    }
 }
