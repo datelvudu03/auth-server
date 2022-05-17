@@ -1,4 +1,4 @@
-package com.authserver.controllerAdvice;
+package com.authserver.controller.controllerAdvice;
 
 import com.authserver.exceptionHandler.AppUserNotFoundException;
 import org.springframework.http.HttpStatus;

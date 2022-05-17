@@ -1,8 +1,11 @@
 package com.authserver.controller;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.authserver.entity.AppUser;
 import com.authserver.entity.JwtToken;
 import com.authserver.exceptionHandler.AppUserNotFoundException;
@@ -29,11 +32,10 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 public class AppUserController {
     private final AppUserRepository appUserRepository;
-    private final List<JwtToken> tokens;
+    Random random = new Random();
 
-    public AppUserController(AppUserRepository appUserRepository, List<JwtToken> tokens) {
+    public AppUserController(AppUserRepository appUserRepository) {
         this.appUserRepository = appUserRepository;
-        this.tokens = tokens;
     }
     @GetMapping("/getUserWithUsername/{username}")
     ResponseEntity<EntityModel<AppUser>> getUser(@PathVariable String username){
@@ -60,54 +62,49 @@ public class AppUserController {
     return ResponseEntity.ok(CollectionModel.of(appUsers,
             linkTo(methodOn(AppUserController.class).findAll()).withSelfRel()));
     }
-
-   /* @GetMapping("/tokens")
-    List<JwtToken> allTokens(){
-        List<JwtToken> tempTokens = new ArrayList<>();
-        for (JwtToken i: tokens) {
-            String token = i.getToken();
-            try {
-                Algorithm algorithm = Algorithm.HMAC256("43f3b8fd2bab8815df2db818d08eeac0"); //use more secure key
-                JWTVerifier verifier = JWT.require(algorithm)
-                        .withIssuer("datudy")
-                        .withClaim()
-                        .build(); //Reusable verifier instance
-                DecodedJWT jwt = verifier.verify(token);
-            } catch (JWTVerificationException exception){
-                //Invalid signature/claims
-            }
-
-        }
-    }*/
-
     @GetMapping("/userGet/{username}/{password}")
     List<AppUser> getUser(@PathVariable String username,@PathVariable String password){
         return appUserRepository.findByUsernameAndPassword(username,password);
     }
 
     @GetMapping("/userGetJwt/{username}/{password}")
-    EntityModel<JwtToken> getToken(@PathVariable String username,@PathVariable String password){
+    ResponseEntity<EntityModel<JwtToken>> getToken(@PathVariable String username,@PathVariable String password){
         List<AppUser> appUsers = appUserRepository.findByUsernameAndPassword(username,password);
         if (appUsers.isEmpty()){
             throw new AppUserNotFoundException(username);
         }
+        JwtToken jwtToken = new JwtToken();
         AppUser appUser = appUsers.get(0);
+        System.out.println(appUser + "asd");
         String token = null;
         try {
             Algorithm algorithm = Algorithm.HMAC256("43f3b8fd2bab8815df2db818d08eeac0");
-            token = JWT.create().withIssuer("datudy")
+            token = JWT.create()
+                    .withIssuer("datudy")
                     .withClaim("userId", appUser.getId())
                     .withClaim("userName", appUser.getUsername())
                     .withClaim("userRole", appUser.getRole())
                     .sign(algorithm);
 
+            jwtToken.setId(random.nextLong());
+            jwtToken.setToken(token);
         } catch (JWTCreationException exception) {
             System.out.println(exception);
         }
-        Random random = new Random();
-        JwtToken jwtToken = new JwtToken(random.nextLong(), token);
-        tokens.add(jwtToken);
-        return EntityModel.of(jwtToken);
+
+
+       /* try{
+            Algorithm algorithm = Algorithm.HMAC256("43f3b8fd2bab8815df2db818d08eeac0");
+            JWTVerifier verifier = JWT.require(algorithm)
+                    .withIssuer("datudy")
+                    .build();
+            DecodedJWT jwt = verifier.verify(token);
+            System.out.println(jwt.getClaims());
+        }catch (JWTDecodeException exception){
+            System.out.println(exception);
+        }*/
+        return ResponseEntity.ok(EntityModel.of(jwtToken,
+                linkTo(methodOn(AppUserController.class).getToken(username, password)).withSelfRel()));
     }
 
 }
