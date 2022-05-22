@@ -6,10 +6,7 @@ import com.authserver.repository.ContactRepository;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,5 +44,7 @@ public class ContactController {
         return ResponseEntity.ok(CollectionModel.of(contacts,
                 linkTo(methodOn(ContactController.class).findAll()).withSelfRel()));
     }
+//    @PostMapping("addContact")
+//    ResponseEntity<EntityModel<Contact>> addContact(@RequestBody Contact contact, @RequestBody AppUser appUser){}
 
 }

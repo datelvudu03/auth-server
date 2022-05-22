@@ -3,18 +3,17 @@ package com.authserver.controller;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
+import com.authserver.controller.controllerAdvice.exceptionHandler.AppUserIdNotFoundException;
 import com.authserver.entity.AppUser;
 import com.authserver.entity.JwtToken;
-import com.authserver.exceptionHandler.AppUserNotFoundException;
+import com.authserver.controller.controllerAdvice.exceptionHandler.AppUserNotFoundException;
 import com.authserver.repository.AppUserRepository;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -33,13 +32,13 @@ public class AppUserController {
     public AppUserController(AppUserRepository appUserRepository) {
         this.appUserRepository = appUserRepository;
     }
-    @GetMapping("/getUserWithUsername/{username}")
+    @GetMapping("/findOneWithUsername/{username}")
     ResponseEntity<EntityModel<AppUser>> getUser(@PathVariable String username){
         return ResponseEntity.ok(
                 EntityModel.of(appUserRepository.findByUsername(username),
                 linkTo(methodOn(AppUserController.class).getUser(username)).withSelfRel()));
     }
-    @GetMapping("/getUserWithId/{id}")
+    @GetMapping("/findOne/{id}")
     ResponseEntity<EntityModel<AppUser>> findOne(@PathVariable long id) {
         return appUserRepository.findById(id) //
                 .map(appUser -> EntityModel.of(appUser, //
@@ -52,7 +51,8 @@ public class AppUserController {
     ResponseEntity<CollectionModel<EntityModel<AppUser>>> findAll(){
     List<EntityModel<AppUser>> appUsers = appUserRepository.findAll().stream()
             .map(appUser -> EntityModel.of(appUser, //
-                    linkTo(methodOn(AppUserController.class).findOne(appUser.getId())).withSelfRel(), //
+                    linkTo(methodOn(AppUserController.class).findOne(appUser.getId())).withSelfRel(),
+                    //linkTo(methodOn(AppUserController.class).updateAppUser(appUser,appUser.getId())).withRel("editAppUser"),//
                     linkTo(methodOn(AppUserController.class).findAll()).withRel("appUsers"))) //
             .collect(Collectors.toList());
     return ResponseEntity.ok(CollectionModel.of(appUsers,
@@ -65,12 +65,11 @@ public class AppUserController {
                 linkTo(methodOn(AppUserController.class).addAppUser(newAppUser)).withSelfRel()));
     }
     @PutMapping("/updateUser/{id}")
-    ResponseEntity<EntityModel<AppUser>> updateAppUser(@RequestBody AppUser updatedAppUser, @PathVariable Long id)  {
+    ResponseEntity<EntityModel<AppUser>> updateAppUser(@RequestBody AppUser updatedAppUser, @PathVariable Long id) throws AppUserIdNotFoundException  {
         if (!appUserRepository.existsById(id)){
-            return ResponseEntity.notFound().build();
-
+            //return ResponseEntity.notFound().build();
+            throw new AppUserIdNotFoundException(id);
         }
-
         AppUser appUser = appUserRepository.getById(id);
         appUser.setUsername(updatedAppUser.getUsername());
         appUser.setPassword(updatedAppUser.getPassword());
@@ -79,15 +78,20 @@ public class AppUserController {
                     linkTo(methodOn(AppUserController.class).updateAppUser(updatedAppUser,id)).withSelfRel()));
 
     }
+    @DeleteMapping("/deleteAppUser/{id}")
+    String deleteAppUser(@PathVariable Long id) {
+        appUserRepository.deleteById(id);
+        return "User with id "+ id +" deleted";
+    }
 
 
     @GetMapping("/userGet/{username}/{password}")
-    List<AppUser> getUser(@PathVariable String username,@PathVariable String password){
-        return appUserRepository.findByUsernameAndPassword(username,password);
+    boolean getUser(@PathVariable String username,@PathVariable String password){
+        return appUserRepository.existsByUsernameAndPassword(username,password);
     }
 
-    @GetMapping("/userGetJwt/{username}/{password}")
-    ResponseEntity<EntityModel<JwtToken>> getToken(@PathVariable String username,@PathVariable String password){
+    @PostMapping("/userGetJwt/{username}/{password}")
+    ResponseEntity<EntityModel<JwtToken>> getToken(@PathVariable String username,@PathVariable String password) throws AppUserNotFoundException{
         List<AppUser> appUsers = appUserRepository.findByUsernameAndPassword(username,password);
         if (appUsers.isEmpty()){
             throw new AppUserNotFoundException(username);

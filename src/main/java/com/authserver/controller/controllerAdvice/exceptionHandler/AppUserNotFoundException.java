@@ -1,4 +1,4 @@
-package com.authserver.exceptionHandler;
+package com.authserver.controller.controllerAdvice.exceptionHandler;
 
 public class AppUserNotFoundException extends RuntimeException {
 
